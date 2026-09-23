@@ -1,0 +1,91 @@
+/* Play mode. The card sits centred on a neutral ground and scales to fit,
+   with no editor chrome — the stack is the whole interface. */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--surface-sunken);
+  font-family: var(--font-ui);
+  color: var(--text);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#stage {
+  height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+#play-card {
+  position: relative;
+  background: #ffffff;
+  box-shadow: var(--shadow-lg);
+  transform-origin: center center;
+  flex-shrink: 0;
+}
+
+#play-canvas { position: absolute; inset: 0; display: block; }
+#play-objects { position: absolute; inset: 0; }
+
+.obj { position: absolute; }
+.obj-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.25;
+  pointer-events: none;
+}
+.obj-button {
+  display: grid;
+  place-items: center;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--text-base);
+  color: var(--text);
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.06s, background 0.12s;
+}
+.obj-button:hover { background: var(--surface-sunken); }
+.obj-button:active { transform: translateY(1px); }
+.obj-button.is-canvas { padding: 0; background: #fff; }
+.obj-button-label {
+  padding: 0 var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+/* Invisible buttons are click targets with no appearance at all. */
+.obj-button.invisible {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: transparent;
+}
+.obj-button.invisible:hover { background: transparent; }
+
+#play-msg {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%) translateY(8px);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s, transform 0.16s;
+  z-index: 200;
+  max-width: 80vw;
+}
+#play-msg.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+#play-msg.error { background: var(--danger); color: #fff; }
+#play-msg.info  { background: var(--info); color: #fff; }

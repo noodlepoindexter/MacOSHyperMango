@@ -1,0 +1,20 @@
+/* Standalone reference window. Its own small stylesheet rather than app.css,
+   since it has none of the editor's chrome — just a scrollable page. */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  -webkit-font-smoothing: antialiased;
+}
+
+#reference-page {
+  height: 100%;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-5) var(--space-5);
+}

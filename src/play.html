@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play</title>
+  <link rel="stylesheet" href="./styles/tokens.css" />
+  <link rel="stylesheet" href="./styles/controls.css" />
+  <link rel="stylesheet" href="./styles/effects.css" />
+  <link rel="stylesheet" href="./styles/play.css" />
+</head>
+<body>
+  <div id="stage">
+    <div id="play-card">
+      <canvas id="play-canvas"></canvas>
+      <div id="play-objects"></div>
+    </div>
+  </div>
+  <div id="play-msg"></div>
+
+  <div class="sheet-backdrop" id="sheet">
+    <div class="sheet" role="dialog" aria-modal="true">
+      <div class="sheet-head" id="sheet-title"></div>
+      <div class="sheet-body" id="sheet-body"></div>
+      <div class="sheet-foot" id="sheet-foot"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./play/player.js"></script>
+</body>
+</html>

@@ -1,0 +1,160 @@
+/* ---------------------------------------------------------------------------
+   Design tokens.
+
+   Every colour, radius, and type decision in the app resolves through a token
+   defined here. Nothing downstream hardcodes a colour — that is what makes the
+   dark-mode override below a single block rather than a sweep through every
+   stylesheet, and what will make a Windows theme pass cheap later.
+
+   The visual language is deliberately platform-neutral-modern: flat surfaces,
+   hairline borders, soft elevation. This replaces the web version's Windows 3.1
+   pastiche (#c0c0c0 faces, inset/outset bevels, monospace chrome).
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* Neutrals — surfaces are layered light-to-dark by elevation. */
+  --surface-sunken:  #eceef1;   /* workspace behind the card */
+  --surface:         #f7f8fa;   /* panels, sidebars */
+  --surface-raised:  #ffffff;   /* cards, popovers, inputs */
+  --surface-overlay: #ffffff;   /* sheets and dialogs */
+
+  --border:          #dcdfe4;   /* hairline dividers */
+  --border-strong:   #c3c8d0;   /* input outlines */
+
+  --text:            #1c1f24;
+  --text-secondary:  #5b6472;
+  --text-muted:      #8b93a1;
+  --text-inverse:    #ffffff;
+
+  /* Accent — used for selection, focus, and primary actions. */
+  --accent:          #e8792b;   /* mango orange, matches the app icon */
+  --accent-hover:    #d76a1e;
+  --accent-active:   #c25d15;
+  --accent-soft:     #fdf0e5;   /* tinted background for selected rows */
+  --accent-text:     #ffffff;
+
+  --danger:          #d1453b;
+  --danger-soft:     #fdecea;
+  --success:         #2e9e5b;
+  --info:            #2f6fd0;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgba(16, 22, 32, 0.06);
+  --shadow-md: 0 2px 8px rgba(16, 22, 32, 0.10), 0 1px 2px rgba(16, 22, 32, 0.06);
+  --shadow-lg: 0 12px 32px rgba(16, 22, 32, 0.18), 0 2px 8px rgba(16, 22, 32, 0.10);
+
+  /* Geometry */
+  --radius-sm: 4px;
+  --radius:    6px;
+  --radius-lg: 10px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+
+  /* Type — system UI for chrome, monospace reserved for script editing. */
+  --font-ui: system-ui, -apple-system, "Segoe UI Variable Text", "Segoe UI",
+             Roboto, "Helvetica Neue", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono",
+               Menlo, Consolas, monospace;
+
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-lg: 15px;
+
+  /* Chrome metrics */
+  --toolbar-h:   48px;
+  --statusbar-h: 26px;
+  --rail-w:      48px;
+  --inspector-w: 268px;
+  /* Filmstrip thumbnails, two-thirds of the old 160px sidebar width. */
+  --thumb-w:     107px;
+
+  /* Syntax highlighting */
+  --syn-keyword: #8b3fc4;
+  --syn-command: #2f6fd0;
+  --syn-string:  #1f7a4d;
+  --syn-number:  #b5591f;
+  --syn-comment: #8b93a1;
+  --syn-error:   #d1453b;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface-sunken:  #16181c;
+    --surface:         #1e2126;
+    --surface-raised:  #272b32;
+    --surface-overlay: #2c3038;
+
+    --border:          #343941;
+    --border-strong:   #454b55;
+
+    --text:            #e8eaed;
+    --text-secondary:  #a4adba;
+    --text-muted:      #757e8c;
+    --text-inverse:    #16181c;
+
+    --accent:          #f08a3c;
+    --accent-hover:    #f79a52;
+    --accent-active:   #e0782a;
+    --accent-soft:     #3a2a1c;
+    --accent-text:     #16181c;
+
+    --danger:          #e5675d;
+    --danger-soft:     #3a2220;
+    --success:         #4fb87a;
+    --info:            #5b9af0;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.40), 0 1px 2px rgba(0, 0, 0, 0.30);
+    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.40);
+
+    --syn-keyword: #c98bec;
+    --syn-command: #6faaf5;
+    --syn-string:  #6ec894;
+    --syn-number:  #e8a065;
+    --syn-comment: #757e8c;
+    --syn-error:   #e5675d;
+
+    color-scheme: dark;
+  }
+}
+
+/* Explicit override wins in both directions, so an in-app theme switch works
+   regardless of the OS setting. */
+:root[data-theme="dark"] {
+  --surface-sunken:  #16181c;
+  --surface:         #1e2126;
+  --surface-raised:  #272b32;
+  --surface-overlay: #2c3038;
+  --border:          #343941;
+  --border-strong:   #454b55;
+  --text:            #e8eaed;
+  --text-secondary:  #a4adba;
+  --text-muted:      #757e8c;
+  --text-inverse:    #16181c;
+  --accent:          #f08a3c;
+  --accent-hover:    #f79a52;
+  --accent-active:   #e0782a;
+  --accent-soft:     #3a2a1c;
+  --accent-text:     #16181c;
+  --danger:          #e5675d;
+  --danger-soft:     #3a2220;
+  --success:         #4fb87a;
+  --info:            #5b9af0;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.40), 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.40);
+  --syn-keyword: #c98bec;
+  --syn-command: #6faaf5;
+  --syn-string:  #6ec894;
+  --syn-number:  #e8a065;
+  --syn-comment: #757e8c;
+  --syn-error:   #e5675d;
+  color-scheme: dark;
+}

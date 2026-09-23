@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HyperMango</title>
+  <link rel="stylesheet" href="./styles/tokens.css" />
+  <link rel="stylesheet" href="./styles/app.css" />
+  <link rel="stylesheet" href="./styles/controls.css" />
+  <link rel="stylesheet" href="./styles/effects.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- TOOLBAR -->
+    <div id="toolbar">
+      <div class="tool-group" id="tool-buttons"><!-- populated by toolbar.js --></div>
+
+      <div class="tool-sep"></div>
+
+      <div class="field">
+        <label for="stroke-well">Stroke</label>
+        <button class="color-well" id="stroke-well" aria-label="Stroke colour"></button>
+      </div>
+      <div class="field">
+        <label for="fill-well">Fill</label>
+        <button class="color-well is-none" id="fill-well" aria-label="Fill colour"></button>
+      </div>
+
+      <div class="tool-sep"></div>
+
+      <div class="field">
+        <label for="brush-size">Size</label>
+        <input type="range" id="brush-size" min="1" max="40" value="3" />
+        <b id="size-readout" style="font-size:var(--text-xs);min-width:16px">3</b>
+      </div>
+
+      <div class="tool-sep"></div>
+
+      <div class="field">
+        <label for="font-family">Font</label>
+        <select id="font-family" style="width:120px">
+          <option value="system-ui, sans-serif">System</option>
+          <option value="Georgia, serif">Serif</option>
+          <option value="Helvetica, Arial, sans-serif">Sans</option>
+          <option value="ui-monospace, Menlo, monospace">Mono</option>
+          <option value="cursive">Cursive</option>
+          <option value="fantasy">Display</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="font-size">Pt</label>
+        <input type="number" id="font-size" min="8" max="144" value="20" style="width:56px" />
+      </div>
+
+      <div class="tool-sep"></div>
+      <div class="tool-group">
+        <button class="tool-btn" id="undo-btn" title="Undo (⌘Z)" aria-label="Undo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 7v6h6" /><path d="M3 13a9 9 0 1 0 3-7.7L3 8" />
+          </svg>
+        </button>
+        <button class="tool-btn" id="redo-btn" title="Redo (⇧⌘Z)" aria-label="Redo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 7v6h-6" /><path d="M21 13a9 9 0 1 1-3-7.7L21 8" />
+          </svg>
+        </button>
+      </div>
+
+      <div style="flex:1"></div>
+      <button class="btn primary" id="play-btn">▶ Play</button>
+    </div>
+
+    <!-- MAIN -->
+    <div id="main">
+      <aside id="sidebar">
+        <div class="pane-title">Cards</div>
+        <div id="card-list"></div>
+        <div id="sidebar-footer">
+          <button class="btn wide" id="add-card-btn">+ Add Card</button>
+        </div>
+      </aside>
+
+      <div id="canvas-pane">
+        <div id="card-container">
+          <canvas id="paint-canvas"></canvas>
+          <canvas id="overlay-canvas"></canvas>
+          <div id="object-layer"></div>
+        </div>
+      </div>
+
+      <aside id="inspector">
+        <div class="pane-title">Inspector</div>
+        <div id="inspector-body"></div>
+      </aside>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div id="statusbar">
+      <span>Card <b id="status-card">1 / 1</b></span>
+      <span>Tool <b id="status-tool">Pointer</b></span>
+      <span>Position <b id="status-pos">0, 0</b></span>
+      <span class="spacer"></span>
+      <span><b id="status-zoom">100%</b></span>
+    </div>
+  </div>
+
+  <div id="msg-bar"></div>
+
+  <!-- Generic sheet host; content is swapped per dialog. -->
+  <div class="sheet-backdrop" id="sheet">
+    <div class="sheet" role="dialog" aria-modal="true">
+      <div class="sheet-head" id="sheet-title"></div>
+      <div class="sheet-body" id="sheet-body"></div>
+      <div class="sheet-foot" id="sheet-foot"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./editor/app.js"></script>
+</body>
+</html>

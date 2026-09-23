@@ -1,0 +1,479 @@
+/* Application chrome: toolbar, sidebar, canvas pane, inspector, status bar. */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  color: var(--text);
+  background: var(--surface);
+  -webkit-font-smoothing: antialiased;
+  /* Chrome is not selectable; only script editors and text objects are. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Studio layout: tool rail down the left, options across the top, card
+   filmstrip along the bottom. The classic arrangement is preserved in
+   docs/layout-classic/ — see tools/revert-layout.sh. */
+#app {
+  display: grid;
+  height: 100vh;
+  grid-template-columns: var(--rail-w) 1fr var(--inspector-w);
+  grid-template-rows: var(--toolbar-h) 1fr auto var(--statusbar-h);
+  grid-template-areas:
+    "options options   options"
+    "rail    canvas    inspector"
+    "rail    strip     inspector"
+    "status  status    status";
+}
+#toolrail    { grid-area: rail; }
+#optionsbar  { grid-area: options; }
+#canvas-pane { grid-area: canvas; }
+#inspector   { grid-area: inspector; }
+#cardstrip   { grid-area: strip; }
+#statusbar   { grid-area: status; }
+
+/* Collapsing a pane zeroes its track rather than hiding the element, so the
+   grid reflows instead of leaving a gap. */
+#app.no-inspector { grid-template-columns: var(--rail-w) 1fr 0; }
+#app.no-sidebar   { grid-template-rows: var(--toolbar-h) 1fr 0 var(--statusbar-h); }
+#app.no-inspector #inspector,
+#app.no-sidebar #cardstrip { display: none; }
+
+/* --- toolbar ------------------------------------------------------------ */
+
+#toolrail {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-2) 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+#toolrail::-webkit-scrollbar { display: none; }
+
+#tool-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+#optionsbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+#optionsbar::-webkit-scrollbar { display: none; }
+
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* Divider orientation follows the container: vertical in the top options bar,
+   horizontal in the tool rail. */
+.tool-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  margin: 0 var(--space-2);
+  flex-shrink: 0;
+}
+#toolrail .tool-sep {
+  width: 24px;
+  height: 1px;
+  margin: var(--space-2) 0;
+}
+
+.tool-btn {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.12s, color 0.12s;
+}
+.tool-btn:hover { background: var(--surface-sunken); color: var(--text); }
+.tool-btn.active {
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent-active);
+}
+.tool-btn svg { width: 18px; height: 18px; display: block; }
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+.field > label {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+/* Colour wells open a popover palette. */
+.color-well {
+  width: 30px;
+  height: 26px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--well-color, #000);
+}
+.color-well.is-none {
+  /* Diagonal slash reads as "no colour" without needing a label. */
+  background-image: linear-gradient(
+    to top right,
+    transparent calc(50% - 1px), var(--danger) calc(50% - 1px),
+    var(--danger) calc(50% + 1px), transparent calc(50% + 1px)
+  );
+  background-color: var(--surface-raised);
+}
+.color-well:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.palette-pop {
+  position: absolute;
+  z-index: 60;
+  padding: var(--space-3);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  width: 212px;
+}
+.palette-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 4px;
+  margin-bottom: var(--space-3);
+}
+.swatch {
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  padding: 0;
+}
+.swatch.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
+.palette-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.picker-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+/* Separates the stroke and fill sections in the right-click colour flyout. */
+.color-flyout-sep {
+  height: 1px;
+  background: var(--border);
+  margin: var(--space-3) 0;
+}
+
+/* --- main layout -------------------------------------------------------- */
+
+#main-unused {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr var(--inspector-w);
+  min-height: 0;
+}
+#main.no-sidebar { grid-template-columns: 0 1fr var(--inspector-w); }
+#main.no-inspector { grid-template-columns: var(--sidebar-w) 1fr 0; }
+#main.no-sidebar.no-inspector { grid-template-columns: 0 1fr 0; }
+
+.pane-title {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding: var(--space-3) var(--space-3) var(--space-2);
+}
+
+/* --- card filmstrip ----------------------------------------------------- */
+
+#cardstrip {
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  min-height: 0;
+}
+#card-list {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-2);
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+#cardstrip > .btn { flex-shrink: 0; }
+
+.card-thumb {
+  border: 2px solid transparent;
+  border-radius: var(--radius);
+  cursor: pointer;
+  background: var(--surface-raised);
+  overflow: hidden;
+  flex-shrink: 0;
+  width: var(--thumb-w);
+  position: relative;
+}
+.card-thumb:hover { border-color: var(--border-strong); }
+.card-thumb.active { border-color: var(--accent); }
+.card-thumb canvas {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1063 / 797;
+  background: #fff;
+}
+.card-thumb-label {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-1);
+  padding: 3px var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.card-thumb-label b {
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.card-thumb-label span { color: var(--text-muted); flex-shrink: 0; }
+
+/* --- canvas pane -------------------------------------------------------- */
+
+#canvas-pane {
+  background: var(--surface-sunken);
+  /* The card is positioned by transform, not by scrolling, so the pane must
+     not scroll — panning would fight the scrollbars. */
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  position: relative;
+}
+#card-container {
+  position: relative;
+  transform-origin: center center;
+  box-shadow: var(--shadow-lg);
+  background: #ffffff;
+  flex-shrink: 0;
+  /* Panning sets transform every frame; a transition would lag behind. */
+  will-change: transform;
+}
+#canvas-pane.panning { cursor: grabbing; }
+#paint-canvas, #overlay-canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+#overlay-canvas { pointer-events: none; }
+#object-layer { position: absolute; inset: 0; }
+
+/* Objects on the card */
+.obj { position: absolute; }
+.obj-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.25;
+  outline: 1px dashed transparent;
+  cursor: move;
+}
+.obj-text:hover:not(.static) { outline-color: var(--border-strong); }
+.obj-text.editing {
+  outline: 2px solid var(--accent);
+  cursor: text;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.obj-button {
+  display: grid;
+  place-items: center;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--text-base);
+  color: var(--text);
+  cursor: move;
+  overflow: hidden;
+}
+.obj-button.is-canvas { padding: 0; background: #fff; }
+.obj-button-label {
+  padding: 0 var(--space-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Invisible buttons stay outlined in the editor so they can be found. */
+.obj-button.invisible {
+  background: transparent;
+  border: 1px dashed var(--accent);
+  box-shadow: none;
+  color: var(--text-muted);
+}
+.obj-button.invisible.static { border-color: transparent; color: transparent; }
+.obj.selected { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.obj-badge {
+  position: absolute;
+  /* Mostly overlapping the button's own top-left corner rather than
+     floating above it, and large enough to actually read at a glance. */
+  top: -7px;
+  left: 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: var(--accent-text);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.obj:hover .obj-badge, .obj.selected .obj-badge { opacity: 1; }
+
+.obj-handle {
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  background: var(--surface-raised);
+  border: 2px solid var(--accent);
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(16, 22, 32, 0.18);
+}
+/* Corner handles are the ones people aim for, so give them a little more. */
+.handle-nw, .handle-ne, .handle-se, .handle-sw { width: 15px; height: 15px; }
+
+.handle-nw { left: -8px; top: -8px; }
+.handle-n  { left: calc(50% - 6.5px); top: -7px; }
+.handle-ne { right: -8px; top: -8px; }
+.handle-e  { right: -7px; top: calc(50% - 6.5px); }
+.handle-se { right: -8px; bottom: -8px; }
+.handle-s  { left: calc(50% - 6.5px); bottom: -7px; }
+.handle-sw { left: -8px; bottom: -8px; }
+.handle-w  { left: -7px; top: calc(50% - 6.5px); }
+
+/* --- inspector ---------------------------------------------------------- */
+
+#inspector {
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  min-width: 0;
+}
+#inspector-body { padding: 0 var(--space-3) var(--space-4); }
+.insp-section { margin-bottom: var(--space-4); }
+.insp-section h3 {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 0 0 var(--space-2);
+}
+.insp-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+.insp-row > label { font-size: var(--text-sm); color: var(--text-secondary); }
+.insp-row.inline {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+.insp-row.inline > label { flex: 1; }
+.insp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.insp-empty {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  padding: var(--space-4) 0;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* --- status bar --------------------------------------------------------- */
+
+#statusbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-3);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+#statusbar b { font-weight: 500; color: var(--text); font-variant-numeric: tabular-nums; }
+#statusbar .spacer { flex: 1; }
+
+/* --- message bar -------------------------------------------------------- */
+
+#msg-bar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--statusbar-h) + 12px);
+  transform: translateX(-50%) translateY(8px);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s, transform 0.16s;
+  z-index: 200;
+  max-width: 70vw;
+}
+#msg-bar.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+#msg-bar.error { background: var(--danger); color: #fff; }
+#msg-bar.info  { background: var(--info); color: #fff; }

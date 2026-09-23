@@ -1,0 +1,27 @@
+#!/bin/sh
+# Append an issue to the Inbox section of ISSUES.md.
+# Usage: ./issue "the eraser leaves a white halo"
+
+set -e
+cd "$(dirname "$0")"
+
+if [ $# -eq 0 ]; then
+  echo "usage: ./issue \"description of the problem\"" >&2
+  exit 1
+fi
+
+TEXT="$*"
+MARKER="<!-- Add issues below this line. -->"
+
+if ! grep -qF "$MARKER" ISSUES.md; then
+  echo "error: marker line missing from ISSUES.md" >&2
+  exit 1
+fi
+
+# Insert directly after the marker so new items queue in the order written.
+awk -v marker="$MARKER" -v text="$TEXT" '
+  { print }
+  index($0, marker) { print "- " text }
+' ISSUES.md > ISSUES.md.tmp && mv ISSUES.md.tmp ISSUES.md
+
+echo "added: $TEXT"

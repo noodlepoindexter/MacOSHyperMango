@@ -1,0 +1,56 @@
+/* Standalone script-editor window. A real Tauri window (native titlebar,
+   traffic lights, draggable) rather than the in-app sheet this used to be —
+   see editor/script-editor-window.js. */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--text-base);
+  -webkit-font-smoothing: antialiased;
+}
+
+#script-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+#script-host {
+  flex: 1;
+  min-height: 0;
+  padding: var(--space-3);
+  display: flex;
+}
+/* The editor component fills the window; only its own internal scroll area
+   (the code, not the chrome around it) should ever scroll. */
+#script-host .script-editor {
+  flex: 1;
+  min-height: 0;
+}
+#script-host .script-scroll {
+  height: auto;
+  flex: 1;
+}
+
+#script-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+#script-footer .spacer { flex: 1; }
+
+#script-save-status {
+  font-size: var(--text-xs);
+  color: var(--success);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+#script-save-status.visible { opacity: 1; }

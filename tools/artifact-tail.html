@@ -1,0 +1,161 @@
+  </div>
+  <p class="caption">
+    Rendered from the application's own stylesheets — every colour, metric, and
+    control above is the one the app ships, scoped so it can sit inside this page.
+    The selected button shows its resize handles and its script name badge
+    (<code>pick</code>), which is how you address it from a script.
+  </p>
+
+  <div class="notes">
+    <div class="note">
+      <h3>Card browser</h3>
+      <p>Thumbnails render each card's paint layer with its objects sketched over it, so layout reads at a glance.</p>
+    </div>
+    <div class="note">
+      <h3>Inspector, not dialogs</h3>
+      <p>The web version edited buttons in a modal, hiding the card. Properties now live beside it and follow the selection.</p>
+    </div>
+    <div class="note">
+      <h3>Object badges</h3>
+      <p>Text and buttons show the name scripts use for them, so there is no guessing at <code>text_1</code> versus <code>button_3</code>.</p>
+    </div>
+    <div class="note">
+      <h3>Retina and zoom</h3>
+      <p>The canvas is backed at device pixel ratio while tools keep working in a fixed 1063×797 space, so files stay portable.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>What changed</h2></div>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th>Area</th><th>Web version</th><th>Desktop</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Google Drive</td>
+          <td>Sign-in banner, token handling, cloud file picker</td>
+          <td>Removed. Native open/save dialogs and real documents instead.</td>
+        </tr>
+        <tr>
+          <td>Interface</td>
+          <td>Beveled grey <code>#c0c0c0</code> faces, inset borders, monospace chrome</td>
+          <td>Flat surfaces, hairline borders, system UI type, full dark mode</td>
+        </tr>
+        <tr>
+          <td>Script engine</td>
+          <td>Two hand-maintained copies that had already drifted apart</td>
+          <td>One runtime, shared by play mode and the HTML export</td>
+        </tr>
+        <tr>
+          <td>Script errors</td>
+          <td>Silent until the moment a line ran</td>
+          <td>Parsed as you type, flagged in the gutter with a line and reason</td>
+        </tr>
+        <tr>
+          <td>File format</td>
+          <td>One JSON file with base64 images inlined</td>
+          <td>A package of real PNGs, written atomically — <code>.hweb</code> still imports and exports</td>
+        </tr>
+        <tr>
+          <td>Undo</td>
+          <td>Unbounded — grew all session</td>
+          <td>Capped at 40 states per card</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>The scripting language</h2></div>
+  <p class="measure">
+    Everything the web version ran still runs unchanged. What the parser adds is
+    the things its line-scanning interpreter could not express: loops, chained
+    conditions, and expressions with more than one operator.
+  </p>
+  <div class="codes">
+    <div class="code">
+      <div class="code-head"><span>Already worked</span><span class="tag old">Parity</span></div>
+<pre><span class="c">-- the whole original command set</span>
+<span class="k">play sound</span> explosion
+<span class="k">wait until done</span>
+<span class="k">move</span> this right <span class="k">by</span> 40 <span class="k">in</span> 2 seconds
+
+<span class="k">ask</span> <span class="s">"What is your name?"</span>
+name = answer
+
+<span class="k">if</span> this <span class="k">is visible</span>
+  <span class="k">hide button</span> this
+<span class="k">else</span>
+  <span class="k">go card</span> start
+<span class="k">end</span></pre>
+    </div>
+    <div class="code">
+      <div class="code-head"><span>Now also works</span><span class="tag new">Added</span></div>
+<pre><span class="c">-- real loops</span>
+<span class="k">repeat</span> 10
+  score = score + 4
+<span class="k">end</span>
+
+<span class="k">repeat while</span> score &lt; 100
+  <span class="k">if</span> lives == 0
+    <span class="k">exit repeat</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="c">-- chained branches, full expressions</span>
+<span class="k">if</span> score &gt; 100
+  <span class="k">go card</span> gold
+<span class="k">else if</span> score &gt; 50
+  <span class="k">go card</span> silver
+<span class="k">end</span>
+total = (base + bonus) * 2</pre>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>How it fits together</h2></div>
+  <p class="measure">
+    The runtime is deliberately free of any DOM or Tauri dependency: it talks to
+    a small host interface. That is what lets the same engine drive the play
+    window and the exported page, instead of maintaining two of them.
+  </p>
+  <div class="tree"><b>src-tauri/</b>
+  <i>menu.rs</i>      native menu bar, emits events to the frontend
+  <i>format.rs</i>    .hmango package + .hweb interop, atomic writes
+<b>src/</b>
+  <i>runtime/</i>     lexer → parser → AST → async interpreter  <b>← the engine</b>
+  <i>canvas/</i>      surface, flood fill, one module per tool
+  <i>model/</i>       stack, history, document lifecycle
+  <i>editor/</i>      toolbar, inspector, card browser, script editor
+  <i>play/</i>        play window        ┐ both drive
+  <i>export/</i>      standalone HTML    ┘ runtime/ through one host interface</div>
+</section>
+
+<section>
+  <div class="sec-head"><h2>What's verified</h2></div>
+  <ul class="checks">
+    <li><span class="pill pass">Passing</span><span><b>36 automated tests</b> — every original command, nesting, type errors, the step budget, and all the added loop and expression forms</span></li>
+    <li><span class="pill pass">Passing</span><span><b>Export bundle executes</b> — a <code>repeat</code> script is compiled and run inside the concatenated export bundle, so the page can't ship a broken engine</span></li>
+    <li><span class="pill pass">Passing</span><span><b>Rust backend and frontend build clean</b>, and the app launches with its menu bar live</span></li>
+    <li><span class="pill pass">Passing</span><span><b>The demo above</b> was produced by the real export pipeline, not a mock-up</span></li>
+    <li><span class="pill todo">Untested</span><span><b>Drawing tools by hand</b> — flood fill against antialiased edges, polygon snap, canvas buttons. Needs a person at the app.</span></li>
+    <li><span class="pill todo">Untested</span><span><b>Round-tripping a real <code>.hweb</code></b> from the live web app, which is the strongest fidelity check available</span></li>
+  </ul>
+</section>
+
+<section>
+  <div class="sec-head"><h2>Running it</h2></div>
+  <div class="run">
+    <p>Node and Rust were installed as part of this build; nothing else is needed.</p>
+<pre>npm run tauri dev     <span class="c"># develop</span>
+npm run tauri build   <span class="c"># produce HyperMango.app</span>
+npm test              <span class="c"># the 36 tests</span></pre>
+  </div>
+</section>
+
+</div>
