@@ -69,6 +69,7 @@
   --toolbar-h:   48px;
   --statusbar-h: 26px;
   --rail-w:      48px;
+  --palette-w:   56px;
   --inspector-w: 268px;
   /* Filmstrip thumbnails, two-thirds of the old 160px sidebar width. */
   --thumb-w:     107px;

@@ -23,6 +23,7 @@ import { createTools, ToolContext } from '../canvas/tools/index.js';
 import { ICONS, TOOL_META } from './icons.js';
 import { Inspector } from './inspector.js';
 import { CardBrowser } from './cardbrowser.js';
+import { SwatchRail } from './palette.js';
 import { openSheet, closeSheet, isSheetOpen, initSheets, row, input } from './sheet.js';
 import { buildExportHtml } from '../export/html.js';
 import { buildRuntimeBundle } from '../export/bundle.js';
@@ -161,10 +162,19 @@ class Editor {
     this.bindColorWell('stroke-well', 'stroke');
     this.bindColorWell('fill-well', 'fill');
     this.bindColorFlyout();
+    this.swatchRail = new SwatchRail(document.getElementById('palette-rail'), (c, button) => {
+      // Left click sets the line colour, unless the bucket is active — its
+      // "paint" is the fill. Right click always sets the fill.
+      const key = button === 'right' || this.tool === 'bucket' ? 'fill' : 'stroke';
+      this.style[key] = c;
+      this.refreshWells();
+      if (key === 'stroke') this.applyTextStyleToSelection(c);
+    });
 
     document.getElementById('undo-btn').addEventListener('click', () => this.undo());
     document.getElementById('redo-btn').addEventListener('click', () => this.redo());
     document.getElementById('add-card-btn').addEventListener('click', () => this.addCard());
+    document.getElementById('add-button-btn').addEventListener('click', () => this.setTool('button'));
     this.bindPlaySplit();
 
     this.refreshWells();
@@ -358,6 +368,7 @@ class Editor {
       el.classList.toggle('is-none', !v);
       el.style.setProperty('--well-color', v || 'transparent');
     }
+    this.swatchRail?.highlight(this.style.stroke, this.style.fill);
   }
 
   /** Colour and font changes apply to a selected text object immediately. */
@@ -494,7 +505,7 @@ class Editor {
       const tool = this.activeTool();
       if (e.button !== 0 || !tool?.isMultiClick || !outside(e)) return;
       // Clicks on the chrome (toolbar, inspector, sidebar) are real UI clicks.
-      if (e.target.closest('#toolbar, #inspector, #sidebar, #statusbar, .sheet-backdrop, .palette-pop')) {
+      if (e.target.closest('#toolbar, #toolrail, #palette-rail, #optionsbar, #inspector, #sidebar, #statusbar, .sheet-backdrop, .palette-pop')) {
         return;
       }
       e.preventDefault();

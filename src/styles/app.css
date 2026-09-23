@@ -22,14 +22,15 @@ html, body {
 #app {
   display: grid;
   height: 100vh;
-  grid-template-columns: var(--rail-w) 1fr var(--inspector-w);
+  grid-template-columns: var(--palette-w) var(--rail-w) 1fr var(--inspector-w);
   grid-template-rows: var(--toolbar-h) 1fr auto var(--statusbar-h);
   grid-template-areas:
-    "options options   options"
-    "rail    canvas    inspector"
-    "rail    strip     inspector"
-    "status  status    status";
+    "options options options   options"
+    "palette rail    canvas    inspector"
+    "palette rail    strip     inspector"
+    "status  status  status    status";
 }
+#palette-rail { grid-area: palette; }
 #toolrail    { grid-area: rail; }
 #optionsbar  { grid-area: options; }
 #canvas-pane { grid-area: canvas; }
@@ -39,10 +40,72 @@ html, body {
 
 /* Collapsing a pane zeroes its track rather than hiding the element, so the
    grid reflows instead of leaving a gap. */
-#app.no-inspector { grid-template-columns: var(--rail-w) 1fr 0; }
+#app.no-inspector { grid-template-columns: var(--palette-w) var(--rail-w) 1fr 0; }
 #app.no-sidebar   { grid-template-rows: var(--toolbar-h) 1fr 0 var(--statusbar-h); }
 #app.no-inspector #inspector,
 #app.no-sidebar #cardstrip { display: none; }
+
+/* --- swatch rail -------------------------------------------------------- */
+
+#palette-rail {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  min-height: 0;
+}
+#palette-swatches {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(16, minmax(10px, 1fr));
+  grid-auto-flow: column;
+  gap: 1px;
+}
+.rail-swatch {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 2px;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+}
+.rail-swatch:hover { outline: 1px solid var(--text); outline-offset: -1px; z-index: 1; }
+.rail-swatch.is-stroke { outline: 2px solid var(--accent); outline-offset: -2px; z-index: 1; }
+.rail-swatch.is-fill::after {
+  content: '';
+  position: absolute;
+  inset: 30%;
+  border-radius: 50%;
+  background: var(--surface-raised);
+  border: 1px solid var(--accent);
+}
+#palette-set-name {
+  font-size: 9px;
+  text-align: center;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+#palette-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+}
+.palette-arrow {
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+.palette-arrow:hover { background: var(--surface-sunken); }
 
 /* --- toolbar ------------------------------------------------------------ */
 
