@@ -3,9 +3,25 @@
 
 mod format;
 mod menu;
+mod recent;
 
 use format::Document;
 use std::path::PathBuf;
+use tauri::Manager;
+
+/// Record a document the user opened or saved, for File ▸ Open Recent.
+#[tauri::command]
+fn note_recent(app: tauri::AppHandle, path: String) {
+    recent::add(&app, &path);
+    menu::refresh(&app);
+}
+
+/// Drop a recent entry that could not be opened.
+#[tauri::command]
+fn forget_recent(app: tauri::AppHandle, path: String) {
+    recent::remove(&app, &path);
+    menu::refresh(&app);
+}
 
 /// Load a document from disk. Accepts either a `.hmango` package or a `.hweb`
 /// file; the frontend gets the same shape either way.
@@ -52,8 +68,10 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .manage(recent::Recent::default())
         .setup(|app| {
             let handle = app.handle();
+            *app.state::<recent::Recent>().0.lock().unwrap() = recent::load(handle);
             let m = menu::build(handle)?;
             app.set_menu(m)?;
             Ok(())
@@ -67,6 +85,8 @@ fn main() {
             export_hweb,
             export_html,
             set_document_edited,
+            note_recent,
+            forget_recent,
         ])
         .run(tauri::generate_context!())
         .expect("error while running HyperMango");

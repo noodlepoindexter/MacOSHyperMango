@@ -1231,7 +1231,9 @@ class Editor {
     };
 
     listen('menu', (event) => {
-      handlers[event.payload]?.();
+      const id = event.payload;
+      if (id.startsWith('recent:')) this.doc.openRecent(id.slice('recent:'.length));
+      else handlers[id]?.();
     });
   }
 

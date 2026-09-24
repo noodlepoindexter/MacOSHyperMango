@@ -85,7 +85,12 @@ export class DocumentController {
     await this.loadPath(selected);
   }
 
-  async loadPath(path) {
+  async openRecent(path) {
+    if (!(await this.confirmDiscard())) return;
+    await this.loadPath(path, { fromRecent: true });
+  }
+
+  async loadPath(path, { fromRecent = false } = {}) {
     try {
       const doc = await invoke('load_document', { path });
       this.app.setStack(fromDocument(doc));
@@ -93,7 +98,9 @@ export class DocumentController {
       // a native package rather than silently overwriting the imported file.
       this.path = path.endsWith('.hweb') ? null : path;
       this.markClean();
+      noteRecent(path);
     } catch (e) {
+      if (fromRecent) invoke('forget_recent', { path }).catch(() => {});
       await message(String(e), { title: 'Could not open stack', kind: 'error' });
     }
   }
@@ -120,6 +127,7 @@ export class DocumentController {
       await this.app.syncBeforeSave();
       await invoke('save_document', { path, doc: toDocument(this.app.getStack()) });
       this.markClean();
+      noteRecent(path);
       return true;
     } catch (e) {
       await message(String(e), { title: 'Could not save stack', kind: 'error' });
@@ -161,6 +169,11 @@ export class DocumentController {
       await message(String(e), { title: 'Could not export', kind: 'error' });
     }
   }
+}
+
+/** The recent list is a convenience; failing to update it never blocks a save. */
+function noteRecent(path) {
+  invoke('note_recent', { path }).catch(() => {});
 }
 
 function safeName(name) {

@@ -24,9 +24,23 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .quit()
         .build()?;
 
+    let mut recent_menu = SubmenuBuilder::new(app, "Open Recent");
+    let entries = crate::recent::menu_entries(app);
+    for (id, label) in &entries {
+        recent_menu = recent_menu.item(&item(app, id, label, None)?);
+    }
+    if !entries.is_empty() {
+        recent_menu = recent_menu.separator();
+    }
+    let clear = MenuItemBuilder::with_id("file.clearRecent", "Clear Menu")
+        .enabled(!entries.is_empty())
+        .build(app)?;
+    let recent_menu = recent_menu.item(&clear).build()?;
+
     let file_menu = SubmenuBuilder::new(app, "File")
         .item(&item(app, "file.new", "New Stack", Some("CmdOrCtrl+Shift+N"))?)
         .item(&item(app, "file.open", "Open…", Some("CmdOrCtrl+O"))?)
+        .item(&recent_menu)
         .separator()
         .item(&item(app, "file.save", "Save", Some("CmdOrCtrl+S"))?)
         .item(&item(app, "file.saveAs", "Save As…", Some("CmdOrCtrl+Shift+S"))?)
@@ -117,9 +131,30 @@ fn item<R: Runtime>(
     b.build(app)
 }
 
+/// Rebuild the menu bar, e.g. after the recent-files list changes.
+pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
+    if let Ok(m) = build(app) {
+        let _ = app.set_menu(m);
+    }
+}
+
 /// Forward a menu selection to whichever window is focused, falling back to
 /// the main window. Play mode runs in its own window and ignores editor events.
+/// Document-level items (Clear Menu, recent files) always go to the editor.
 pub fn dispatch<R: Runtime>(app: &AppHandle<R>, id: &str) {
+    if id == "file.clearRecent" {
+        crate::recent::clear(app);
+        refresh(app);
+        return;
+    }
+    if id.starts_with(crate::recent::MENU_PREFIX) {
+        if let Some(main) = app.get_webview_window("main") {
+            let _ = main.set_focus();
+            let _ = main.emit("menu", id);
+        }
+        return;
+    }
+
     let target = app
         .webview_windows()
         .into_iter()
