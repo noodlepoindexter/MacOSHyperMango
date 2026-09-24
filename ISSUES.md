@@ -4,16 +4,22 @@ Add anything you notice under **Inbox**. Rough notes are fine — "pencil feels
 laggy", "can't find the polygon tool", "crashes when I delete the last card".
 No format required, one item per line starting with `- `.
 
-Claude reads this file on a loop, works the top of the Inbox down, and moves
-finished items to **Done** with a note on what changed.
+Claude works the Inbox top-down, one issue at a time, moving each through
+**In progress** to **Done** with a note on what changed. Anything that needs a
+decision from you lands in **Needs input** with a question; answer it inline and
+move the item back to the Inbox.
 
-**Fastest way to add one:**
+**Adding issues:**
 
 ```sh
-./issue "the eraser leaves a white halo"
+./issues "the eraser leaves a white halo"   # append to the Inbox
+./issues                                     # list the Inbox
 ```
 
 Or just edit the Inbox list below by hand.
+
+**Running the loop:** in Claude Code, `/issues-loop` keeps working the Inbox and
+checks back periodically for new items. `/work-issues` does a single issue.
 
 ---
 
@@ -24,6 +30,12 @@ Or just edit the Inbox list below by hand.
 ---
 
 ## In progress
+
+_Nothing yet._
+
+---
+
+## Needs input
 
 _Nothing yet._
 

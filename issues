@@ -1,0 +1,70 @@
+#!/bin/sh
+# Queue issues in ISSUES.md for the Claude issue loop.
+#
+#   ./issues "the eraser leaves a white halo"   append to the end of the Inbox
+#   ./issues                                     list what's in the Inbox
+#   echo "text" | ./issues -                     read the issue from stdin
+
+set -e
+cd "$(dirname "$0")"
+
+FILE=ISSUES.md
+MARKER="<!-- Add issues below this line. -->"
+
+if [ ! -f "$FILE" ] || ! grep -qF "$MARKER" "$FILE"; then
+  echo "error: $FILE is missing the line: $MARKER" >&2
+  exit 1
+fi
+
+case "$1" in
+  -h|--help)
+    sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'
+    exit 0
+    ;;
+  "")
+    # The Inbox runs from the marker to the next '---' rule.
+    MARKER="$MARKER" awk '
+      index($0, ENVIRON["MARKER"]) { on = 1; next }
+      on && /^---/ { exit }
+      on && /^- / { n++; sub(/^- /, ""); printf "%2d. %s\n", n, $0 }
+      END { if (!n) print "Inbox is empty." }
+    ' "$FILE"
+    exit 0
+    ;;
+  -)
+    TEXT=$(cat)
+    ;;
+  *)
+    TEXT="$*"
+    ;;
+esac
+
+# One issue is one list item, so fold any line breaks into spaces.
+TEXT=$(printf '%s' "$TEXT" | tr '\n' ' ' | sed 's/^ *//; s/ *$//')
+if [ -z "$TEXT" ]; then
+  echo "error: empty issue" >&2
+  exit 1
+fi
+
+# Insert after the last non-blank line of the Inbox (or right after the marker
+# when it's empty), so issues are worked in the order they were added. Values go
+# through ENVIRON rather than -v so backslashes in the text arrive untouched.
+TMP=$(mktemp "$FILE.XXXXXX")
+MARKER="$MARKER" TEXT="$TEXT" awk '
+  { line[NR] = $0 }
+  index($0, ENVIRON["MARKER"]) && !start { start = NR; last = NR; next }
+  start && !stop {
+    if ($0 ~ /^---/) stop = NR
+    else if ($0 ~ /[^[:space:]]/) last = NR
+  }
+  END {
+    for (i = 1; i <= NR; i++) {
+      print line[i]
+      if (i == last) print "- " ENVIRON["TEXT"]
+    }
+  }
+' "$FILE" > "$TMP"
+cat "$TMP" > "$FILE"
+rm -f "$TMP"
+
+printf 'added: %s\n' "$TEXT"
