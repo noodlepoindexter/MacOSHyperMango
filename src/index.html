@@ -10,6 +10,15 @@
   <link rel="stylesheet" href="./styles/effects.css" />
 </head>
 <body>
+  <!-- Undo arrow from art/HyperMango-icons.svg; redo mirrors it. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <path id="icon-undo-arrow" fill="#fff" stroke="#5894a2" stroke-width="1.5"
+            stroke-linejoin="round" vector-effect="non-scaling-stroke"
+            d="M204.85,61.44l22,45.8,54.29-9.58s-12.16-6.8-20.72-10.87c4.99-10.51,28.4-28.03,50.16-17.7,21.76,10.33,27.04,32.02,17.5,50.86s-27.71,30.59-51.17,20.05-24.43-19.55-24.43-19.55l-28.51,25.26s11.22,13.68,36.45,29.01c37.73,22.92,86.7.42,104.58-37.23,17.88-37.65,6.53-83.8-37.23-104.58-43.77-20.78-87.39,1.05-104.58,37.23l-18.34-8.71Z" />
+    </defs>
+  </svg>
+
   <div id="app">
     <!-- SWATCH RAIL (vertical, far left) -->
     <div id="palette-rail">
@@ -62,20 +71,20 @@
         <label for="font-size">Pt</label>
         <input type="number" id="font-size" min="8" max="144" value="20" style="width:56px" />
       </div>
+
+      <div class="tool-sep"></div>
       <button class="btn" id="add-button-btn" title="Add a button to this card">Button</button>
 
       <div class="tool-sep"></div>
       <div class="tool-group">
         <button class="tool-btn" id="undo-btn" title="Undo (⌘Z)" aria-label="Undo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 7v6h6" /><path d="M3 13a9 9 0 1 0 3-7.7L3 8" />
+          <svg viewBox="200.98 16.4 176 176">
+            <use href="#icon-undo-arrow" />
           </svg>
         </button>
         <button class="tool-btn" id="redo-btn" title="Redo (⇧⌘Z)" aria-label="Redo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 7v6h-6" /><path d="M21 13a9 9 0 1 1-3-7.7L21 8" />
+          <svg viewBox="200.98 16.4 176 176">
+            <use href="#icon-undo-arrow" transform="translate(577.96 0) scale(-1 1)" />
           </svg>
         </button>
       </div>
