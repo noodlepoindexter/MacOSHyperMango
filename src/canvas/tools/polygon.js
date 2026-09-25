@@ -15,8 +15,7 @@ export function makePolygon() {
     cursor: 'crosshair',
     // Multi-click tools stay armed between events rather than tracking a drag.
     isMultiClick: true,
-    // Points arrive unclamped so a vertex placed outside the card can be
-    // clipped along its own segment rather than squashed axis-wise.
+    // Points arrive unclamped; constrain() brings them onto the card.
     wantsRawPoints: true,
 
     onDown(t, p) {
@@ -37,19 +36,15 @@ export function makePolygon() {
     },
 
     /**
-     * Bring a candidate vertex inside the card. With a previous vertex to work
-     * from, the point slides back along that segment; for the very first vertex
-     * there is no line yet, so an axis clamp is all that is meaningful.
+     * Bring a candidate vertex inside the card: a click off the card lands at
+     * the closest point on it, so shapes can be started and continued from the
+     * workspace around the card.
      */
     constrain(t, p) {
-      const last = this.points[this.points.length - 1];
-      if (!last) {
-        return {
-          x: Math.max(1, Math.min(CARD_W - 1, p.x)),
-          y: Math.max(1, Math.min(CARD_H - 1, p.y)),
-        };
-      }
-      return t.surface.clipIntoCard(last, p);
+      return {
+        x: Math.max(1, Math.min(CARD_W - 1, p.x)),
+        y: Math.max(1, Math.min(CARD_H - 1, p.y)),
+      };
     },
 
     onUp() {},

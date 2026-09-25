@@ -13,11 +13,17 @@
 /** Names generated procedurally — these always work, with no assets present. */
 export const SYNTH_SOUNDS = ['click', 'beep', 'chime', 'whoosh', 'drum', 'glass'];
 
-/** Sample files bundled with the app, carried over from the web version. */
+/** Sample files bundled with the app, in assets/audio/<name>.mp3. */
 export const BUNDLED_SOUNDS = [
-  'beam_me_up_scotty', 'bubbling_potion', 'chicken', 'creaky_door_short',
-  'demon_your_soul', 'door_creak', 'explosion', 'kid_laugh',
-  'magical_disappearance', 'magical_energy_burst', 'monster_1',
+  'applause', 'beam_me_up_scotty', 'bubbling_potion', 'cat_meow', 'chicken',
+  'congrats', 'creaky_door', 'creaky_door_short', 'dark_laugh', 'demon_your_soul',
+  'door_creak', 'dragon', 'eerie_bell', 'evil_laugh_1', 'evil_laugh_2', 'explosion',
+  'fireplace', 'footsteps', 'ghosts', 'kid_laugh', 'lighting_fire',
+  'magical_appearance', 'magical_disappearance', 'magical_energy_burst',
+  'magical_poof', 'monster_1', 'monster_2', 'night_storm', 'scream_boy',
+  'scream_girl', 'snake_hiss', 'spooky_wind', 'suspense', 'thunder',
+  'music_banjo_sneak', 'music_funny_tune', 'music_spooky_synths',
+  'music_spooky_synths_2',
 ];
 
 const SYNTH_SET = new Set(SYNTH_SOUNDS);

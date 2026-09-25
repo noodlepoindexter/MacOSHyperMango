@@ -45,6 +45,10 @@ play sound glass
 play sound explosion
 play sound chicken
 play sound door_creak
+play sound thunder
+play sound applause
+play sound music_banjo_sneak
+-- (a button's Sound menu lists them all)
 
 -- play, then continue when it ends:
 play sound explosion

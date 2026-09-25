@@ -15,7 +15,7 @@ import { makePolygon } from './polygon.js';
 /** Tools that place objects or select rather than paint are handled by the
     editor directly; they appear here so the toolbar can render uniformly. */
 export const TOOL_IDS = [
-  'pointer', 'pencil', 'eraser', 'rect', 'ellipse', 'fillRect',
+  'pointer', 'pencil', 'eraser', 'rect', 'ellipse', 'fillRect', 'fillEllipse',
   'bucket', 'lasso', 'polygon', 'text', 'button',
 ];
 
@@ -26,6 +26,7 @@ export function createTools() {
     rect: makeShape('rect'),
     ellipse: makeShape('ellipse'),
     fillRect: makeShape('fillRect'),
+    fillEllipse: makeShape('fillEllipse'),
     bucket: makeBucket(),
     lasso: makeLasso(),
     polygon: makePolygon(),

@@ -43,6 +43,56 @@ _Nothing yet._
 
 ## Done
 
+**New Filled Ellipse tool** — A solid-oval counterpart to Filled Rectangle, sitting just
+below it in the tool rail with a solid oval icon. Its keyboard shortcut is **O** (for oval),
+since C, the ellipse's first letter, is already the outline Ellipse. It works exactly like
+Filled Rectangle: drag out the shape and it fills with the line colour. A see-through preview
+shows while dragging, and a click without a drag draws nothing. It is the same shape code as
+the other shape tools, with a `fillEllipse` case next to `fillRect` in `shapes.js`, so undo,
+drawing onto canvas buttons and the cursor all come for free. Verified in headless Chrome
+with real input: O selects it (status bar reads "Filled Ellipse"), a drag shows the preview
+and commits a solid ellipse, and F still selects Filled Rectangle. `npm test` 64/64 and the
+build pass; not tried in the Tauri app itself.
+
+**Swatch rail: five more rows (42 colours per set)** — The rail's two columns are now 21
+rows tall instead of 16, and every set was regenerated to fill them rather than padded.
+Primaries and Pastels now step through 21 hues instead of 16, so neighbouring colours are
+closer together. Each row still pairs a hue with its darker (or deeper pastel) partner.
+Grays is now a 42-step ramp from black to white. The row count is one constant, `ROWS` in
+`palette.js`, with the matching `grid-template-rows` in `app.css` commented to point at it.
+Verified in headless Chrome: each set renders 42 swatches in 21 rows, and paging between sets
+works. The rail's content ends at about y = 596, which fits inside the app's 700 px minimum
+window height with no scrolling. `npm test` 64/64 and the build pass; not tried in the Tauri
+app itself.
+
+**Drag a new button out of the Button button** — Dragging from **Button** in the options
+bar now carries a see-through copy of a new button under the cursor, drawn at the card's
+current zoom. Letting go drops a real button centred where you released. If that would put
+any of it off the card, it moves to the closest spot where it fits wholly on the card, so
+dropping on the toolbar or past an edge lands it against that edge. A plain click still adds
+a button at the usual top-left spot. Esc during the drag cancels it, and a drag that ends
+back on the Button button doesn't also count as a click. The default button size now lives
+in `NEW_BUTTON` in `stack.js`, so the ghost and the real button can't drift apart. Verified
+in headless Chrome with real mouse drags: the ghost follows the cursor, a drop mid-card lands
+centred (413, 313), drops past the bottom-right and top-left clamp to (923, 753) and (0, 0),
+Esc cancels, and a click still adds at (74, 74). The new buttons' positions were read from
+the Inspector: in a plain browser the app's Tauri start-up doesn't finish, so buttons aren't
+drawn on the card there. Not tried in the Tauri app itself. `npm test` 64/64 and the build
+pass.
+
+**Polygon: clicks off the card land at the closest point on it** — Off-card clicks were
+already accepted, but a vertex after the first slid back along the line from the previous
+vertex (an earlier deliberate choice), so it landed somewhere other than where you'd expect.
+`polygon.constrain()` now always snaps to the closest point on the card, for the first vertex
+and every later one, and the rubber-band preview follows the same rule. Also: a double-click
+off the card now finishes the shape (it only worked on the card before), the workspace around
+the card shows the polygon cursor so it's clear you can click there, and clicks in the card
+strip no longer count as polygon clicks. `Surface.clipIntoCard()` is now unused but left in
+place with its tests. Verified in headless Chrome by driving real mouse events: started a
+shape off the top-left (vertex at the corner), clicked off the left edge (vertex at the same
+height on the edge), and double-clicked off the card to commit. `npm test` 64/64 and the build
+pass; not tried in the Tauri app itself.
+
 **Play button is now a split button with Play / Play Fullscreen** — Chevron on
 the right opens a menu with the two modes; picking one both plays immediately and becomes
 the new default for the main button (that's what makes it a split button rather than a

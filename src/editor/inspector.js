@@ -7,8 +7,11 @@
    --------------------------------------------------------------------------- */
 
 import { row, input } from './sheet.js';
-import { SYNTH_SOUNDS, BUNDLED_SOUNDS } from '../runtime/audio.js';
+import { AudioEngine, SYNTH_SOUNDS, BUNDLED_SOUNDS } from '../runtime/audio.js';
 import { EFFECTS } from '../runtime/effects.js';
+
+const PLAY_ICON = '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"/></svg>';
+const STOP_ICON = '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><rect x="3.5" y="3.5" width="9" height="9" rx="1" fill="currentColor"/></svg>';
 
 export class Inspector {
   /**
@@ -18,10 +21,15 @@ export class Inspector {
   constructor(el, app) {
     this.el = el;
     this.app = app;
+    this.audio = new AudioEngine();
+    this.previewToken = null;
   }
 
   /** Re-render for the current selection. */
   render(selection) {
+    // A sound preview belongs to the button being rebuilt, so silence it.
+    this.audio.stopAll();
+    this.previewToken = null;
     this.el.innerHTML = '';
     const card = this.app.currentCard();
     if (!card) return;
@@ -227,11 +235,46 @@ export class Inspector {
       sound.appendChild(g);
     }
     sound.value = obj.sound || '';
+
+    // Preview button: plays the selected sound; pressing it again stops it.
+    const preview = document.createElement('button');
+    preview.className = 'btn sound-preview';
+    const showIdle = () => {
+      preview.innerHTML = PLAY_ICON;
+      preview.title = 'Play sound';
+      preview.setAttribute('aria-label', 'Play sound');
+    };
+    showIdle();
+    preview.disabled = !sound.value;
+    preview.addEventListener('click', () => {
+      this.audio.stopAll();
+      if (preview.classList.contains('playing')) {
+        preview.classList.remove('playing');
+        showIdle();
+        return;
+      }
+      this.audio.setCustomSounds(this.app.stack().customSounds);
+      preview.classList.add('playing');
+      preview.innerHTML = STOP_ICON;
+      preview.title = 'Stop';
+      preview.setAttribute('aria-label', 'Stop');
+      const token = (this.previewToken = {});
+      this.audio.play(sound.value).then(() => {
+        if (this.previewToken !== token) return;
+        preview.classList.remove('playing');
+        showIdle();
+      });
+    });
+
     sound.addEventListener('change', () => {
       obj.sound = sound.value;
+      preview.disabled = !sound.value;
       this.change(false);
     });
-    behaviour.appendChild(row('Sound', sound));
+    const soundPicker = document.createElement('div');
+    soundPicker.className = 'sound-picker';
+    soundPicker.append(sound, preview);
+    behaviour.appendChild(row('Sound', soundPicker));
 
     const effect = document.createElement('select');
     const enone = document.createElement('option');

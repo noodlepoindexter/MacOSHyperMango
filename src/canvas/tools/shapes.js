@@ -1,11 +1,11 @@
-/* Rectangle, ellipse, and filled rectangle. All three rubber-band on the
+/* Rectangle, ellipse, filled rectangle and filled ellipse. All rubber-band on the
    overlay layer and commit to the paint layer on release, so an abandoned drag
    leaves nothing behind. */
 
 import { CARD_W, CARD_H } from '../../model/stack.js';
 
 /**
- * @param {'rect'|'ellipse'|'fillRect'} kind
+ * @param {'rect'|'ellipse'|'fillRect'|'fillEllipse'} kind
  */
 export function makeShape(kind) {
   return {
@@ -61,6 +61,15 @@ function draw(ctx, kind, a, b, style, isPreview) {
     // matching the web version's "fill (rectangle interior)" tool.
     ctx.fillStyle = isPreview ? withAlpha(style.stroke, 0.4) : style.stroke;
     ctx.fillRect(clampX(x), clampY(y), w, h);
+    ctx.restore();
+    return;
+  }
+  if (kind === 'fillEllipse') {
+    // Its oval counterpart: a solid ellipse in the stroke colour.
+    ctx.fillStyle = isPreview ? withAlpha(style.stroke, 0.4) : style.stroke;
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+    ctx.fill();
     ctx.restore();
     return;
   }

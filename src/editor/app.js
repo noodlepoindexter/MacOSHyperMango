@@ -12,7 +12,7 @@ import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
 import { readImage } from '@tauri-apps/plugin-clipboard-manager';
 
 import {
-  CARD_W, CARD_H, createStack, createCard, createButton, createText,
+  CARD_W, CARD_H, NEW_BUTTON, createStack, createCard, createButton, createText,
   uniqueCardName,
 } from '../model/stack.js';
 import { History } from '../model/history.js';
@@ -20,7 +20,7 @@ import { DocumentController } from '../model/document.js';
 import { Surface } from '../canvas/surface.js';
 import { ObjectLayer } from '../canvas/objects.js';
 import { createTools, ToolContext } from '../canvas/tools/index.js';
-import { ICONS, TOOL_META } from './icons.js';
+import { ICONS, TOOL_META, prepareCursors, applyToolCursor } from './icons.js';
 import { Inspector } from './inspector.js';
 import { CardBrowser } from './cardbrowser.js';
 import { SwatchRail } from './palette.js';
@@ -104,6 +104,7 @@ class Editor {
     initSheets();
     this.buildToolbar();
     this.bindToolbar();
+    prepareCursors().then(() => this.applyCursors());
     this.bindCanvas();
     this.bindKeyboard();
     this.bindMenu();
@@ -174,10 +175,85 @@ class Editor {
     document.getElementById('undo-btn').addEventListener('click', () => this.undo());
     document.getElementById('redo-btn').addEventListener('click', () => this.redo());
     document.getElementById('add-card-btn').addEventListener('click', () => this.addCard());
-    document.getElementById('add-button-btn').addEventListener('click', () => this.setTool('button'));
+    this.bindButtonDrag(document.getElementById('add-button-btn'));
     this.bindPlaySplit();
 
     this.refreshWells();
+  }
+
+  /**
+   * The Button button: a click adds a button at the usual spot, and a drag
+   * carries a ghost button under the cursor and drops a real one where it is
+   * released, moved just far enough to sit wholly on the card.
+   */
+  bindButtonDrag(source) {
+    const DRAG_THRESHOLD = 4;
+    let suppressClick = false;
+
+    source.addEventListener('click', () => {
+      if (suppressClick) {
+        suppressClick = false;
+        return;
+      }
+      this.setTool('button');
+    });
+
+    source.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      let ghost = null;
+      // A new button's size, drawn at the card's current zoom.
+      const { w, h, label } = NEW_BUTTON;
+      const scale = () => this.surface.paint.getBoundingClientRect().width / CARD_W;
+
+      const place = (ev) => {
+        const s = scale();
+        ghost.style.left = `${ev.clientX - (w * s) / 2}px`;
+        ghost.style.top = `${ev.clientY - (h * s) / 2}px`;
+        ghost.style.transform = `scale(${s})`;
+      };
+      const move = (ev) => {
+        if (!ghost) {
+          if (Math.hypot(ev.clientX - startX, ev.clientY - startY) < DRAG_THRESHOLD) return;
+          ghost = document.createElement('div');
+          ghost.className = 'obj-button button-ghost';
+          ghost.style.width = `${w}px`;
+          ghost.style.height = `${h}px`;
+          const text = document.createElement('span');
+          text.className = 'obj-button-label';
+          text.textContent = label;
+          ghost.appendChild(text);
+          document.body.appendChild(ghost);
+          document.body.classList.add('dragging-button');
+        }
+        place(ev);
+      };
+      const end = (ev, drop) => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        window.removeEventListener('keydown', key, true);
+        if (!ghost) return;
+        ghost.remove();
+        document.body.classList.remove('dragging-button');
+        // The drag replaces the click, including one that lands back on the
+        // button itself; a cancelled drag must not add a button either.
+        suppressClick = true;
+        setTimeout(() => (suppressClick = false), 0);
+        if (!drop) return;
+        this.activeTool()?.onCancel?.(this.toolCtx);
+        this.addButton(this.surface.pointFrom(ev, false));
+      };
+      const up = (ev) => end(ev, true);
+      const key = (ev) => {
+        if (ev.key !== 'Escape') return;
+        ev.stopPropagation();
+        end(null, false);
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+      window.addEventListener('keydown', key, true);
+    });
   }
 
   /** A colour well opens a palette popover anchored beneath it, closing as
@@ -400,22 +476,30 @@ class Editor {
     const meta = TOOL_META.find((m) => m[0] === id);
     document.getElementById('status-tool').textContent = meta ? meta[1] : id;
 
-    const paintTool = this.tools[id];
-    const cursor =
-      id === 'text' ? 'text'
-      : id === 'hand' ? 'grab'
-      : id === 'zoom' ? 'zoom-in'
-      : paintTool?.cursor || 'default';
-    this.surface.overlay.style.cursor = cursor;
-    document.getElementById('card-container').style.cursor = cursor;
-    // Navigation tools work anywhere in the workspace, not just over the card.
-    document.getElementById('canvas-pane').style.cursor =
-      id === 'hand' ? 'grab' : id === 'zoom' ? 'zoom-in' : 'default';
+    this.applyCursors();
 
     // Objects are only draggable with the pointer tool; drawing tools need
     // pointer events to reach the canvas underneath.
     this.objects.root.style.pointerEvents = id === 'pointer' ? 'auto' : 'none';
     if (id !== 'pointer') this.objects.deselect();
+  }
+
+  applyCursors() {
+    const id = this.tool;
+    const fallback =
+      id === 'text' ? 'text'
+      : id === 'hand' ? 'grab'
+      : id === 'zoom' ? 'zoom-in'
+      : this.tools[id]?.cursor || 'default';
+    applyToolCursor(this.surface.overlay, id, fallback);
+    applyToolCursor(document.getElementById('card-container'), id, fallback);
+    // Navigation and multi-click tools work anywhere in the workspace, not
+    // just over the card.
+    const pane = document.getElementById('canvas-pane');
+    if (id === 'hand' || id === 'zoom' || this.tools[id]?.isMultiClick) {
+      applyToolCursor(pane, id, fallback);
+    }
+    else pane.style.cursor = 'default';
   }
 
   activeTool() {
@@ -500,16 +584,27 @@ class Editor {
     // the edge. Card-area events are handled above, so these listeners ignore
     // anything that already reached the container.
     const outside = (e) => !container.contains(e.target);
+    // Clicks on the chrome (toolbar, inspector, card strip…) are real UI clicks.
+    const CHROME = '#toolbar, #toolrail, #palette-rail, #optionsbar, #inspector, #sidebar, #cardstrip, #statusbar, .sheet-backdrop, .palette-pop';
 
     window.addEventListener('pointerdown', (e) => {
       const tool = this.activeTool();
       if (e.button !== 0 || !tool?.isMultiClick || !outside(e)) return;
       // Clicks on the chrome (toolbar, inspector, sidebar) are real UI clicks.
-      if (e.target.closest('#toolbar, #toolrail, #palette-rail, #optionsbar, #inspector, #sidebar, #statusbar, .sheet-backdrop, .palette-pop')) {
-        return;
-      }
+      if (e.target.closest(CHROME)) return;
       e.preventDefault();
       tool.onDown(this.toolCtx, this.surface.pointFrom(e, false), e);
+      if (this.toolCtx.target && !tool.isPending?.()) {
+        this.storeCanvasButton(this.toolCtx.target);
+        this.toolCtx.target = null;
+      }
+    });
+
+    // …and a double-click out there finishes the shape, as it does on the card.
+    window.addEventListener('dblclick', (e) => {
+      const tool = this.activeTool();
+      if (!tool?.isMultiClick || !tool.onDoubleClick || !outside(e) || e.target.closest(CHROME)) return;
+      tool.onDoubleClick(this.toolCtx, this.surface.pointFrom(e, false), e);
       if (this.toolCtx.target && !tool.isPending?.()) {
         this.storeCanvasButton(this.toolCtx.target);
         this.toolCtx.target = null;
@@ -698,10 +793,18 @@ class Editor {
 
   // --- objects ------------------------------------------------------------
 
-  addButton() {
+  /**
+   * @param {{x:number,y:number}} [at] card-space centre to place it on; kept
+   *   wholly on the card. Without it the button cascades from the top-left.
+   */
+  addButton(at) {
     const card = this.currentCard();
     this.pushUndo();
     const btn = createButton(this.cardIndex, card.buttons.length);
+    if (at) {
+      btn.x = Math.round(Math.max(0, Math.min(CARD_W - btn.w, at.x - btn.w / 2)));
+      btn.y = Math.round(Math.max(0, Math.min(CARD_H - btn.h, at.y - btn.h / 2)));
+    }
     card.buttons.push(btn);
     this.setTool('pointer');
     this.commit();
@@ -1150,7 +1253,7 @@ class Editor {
   bindKeyboard() {
     const SHORTCUTS = {
       v: 'pointer', p: 'pencil', e: 'eraser', r: 'rect', c: 'ellipse',
-      f: 'fillRect', b: 'bucket', l: 'lasso', g: 'polygon', t: 'text',
+      f: 'fillRect', o: 'fillEllipse', b: 'bucket', l: 'lasso', g: 'polygon', t: 'text',
       h: 'hand', z: 'zoom',
     };
 

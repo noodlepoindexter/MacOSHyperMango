@@ -55,17 +55,19 @@ html, body {
   gap: var(--space-1);
   padding: var(--space-1);
   min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
 }
+#palette-rail::-webkit-scrollbar { display: none; }
 #palette-swatches {
-  flex: 1;
-  min-height: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: repeat(16, minmax(10px, 1fr));
+  grid-template-rows: repeat(21, auto); /* ROWS in palette.js */
   grid-auto-flow: column;
   gap: 1px;
 }
 .rail-swatch {
+  aspect-ratio: 1;
   border: 1px solid rgba(0, 0, 0, 0.15);
   border-radius: 2px;
   padding: 0;
@@ -542,3 +544,20 @@ html, body {
 #msg-bar.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
 #msg-bar.error { background: var(--danger); color: #fff; }
 #msg-bar.info  { background: var(--info); color: #fff; }
+
+/* Sound menu with its preview button: the button is square, as tall as the menu. */
+.sound-picker { display: flex; gap: var(--space-1); }
+.sound-picker select { flex: 1; min-width: 0; }
+.sound-picker .sound-preview { width: 28px; height: 28px; padding: 0; flex-shrink: 0; }
+.sound-picker .sound-preview svg { display: block; }
+
+/* The button being dragged out of the Button button, drawn at the card's zoom. */
+.button-ghost {
+  position: fixed;
+  z-index: 1000;
+  transform-origin: top left;
+  opacity: 0.8;
+  pointer-events: none;
+  box-shadow: var(--shadow-md);
+}
+body.dragging-button, body.dragging-button * { cursor: grabbing !important; }

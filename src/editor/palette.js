@@ -1,6 +1,8 @@
 /* Swatch rail: two columns of colours down the left edge, paged by arrows. */
 
-const PER_SET = 32;
+// Two columns of ROWS swatches; keep in step with #palette-swatches in app.css.
+const ROWS = 21;
+const PER_SET = ROWS * 2;
 
 function hslToHex(h, s, l) {
   s /= 100;
@@ -11,7 +13,7 @@ function hslToHex(h, s, l) {
   return '#' + [0, 8, 4].map((n) => Math.round(f(n) * 255).toString(16).padStart(2, '0')).join('');
 }
 
-const hues = Array.from({ length: 16 }, (_, i) => i * (360 / 16));
+const hues = Array.from({ length: ROWS }, (_, i) => i * (360 / ROWS));
 
 export const COLOR_SETS = [
   {

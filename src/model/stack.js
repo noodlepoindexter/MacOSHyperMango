@@ -48,6 +48,9 @@ export function createStack() {
   };
 }
 
+/** Size and label of a freshly added button. */
+export const NEW_BUTTON = { w: 140, h: 44, label: 'Button' };
+
 export function createButton(cardIndex, existingCount) {
   // Cascade new buttons so several added in a row do not stack exactly.
   const offset = existingCount * 24;
@@ -57,11 +60,11 @@ export function createButton(cardIndex, existingCount) {
   return {
     id,
     nameId,
-    label: 'Button',
+    label: NEW_BUTTON.label,
     x: Math.min(50 + offset, CARD_W - 150),
     y: Math.min(50 + offset, CARD_H - 54),
-    w: 140,
-    h: 44,
+    w: NEW_BUTTON.w,
+    h: NEW_BUTTON.h,
     goto: 0,
     sound: '',
     invisible: false,
