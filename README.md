@@ -14,13 +14,8 @@ Universal build — runs on Apple Silicon and Intel Macs (macOS 10.15 or later).
 2. Drag **HyperMango** onto the **Applications** folder.
 3. Launch HyperMango from Applications.
 
-The app isn't notarized by Apple yet, so the first launch of a downloaded copy
-is blocked. To allow it, go to **System Settings → Privacy & Security** and click
-**Open Anyway**, or run this once in Terminal:
-
-```sh
-xattr -cr /Applications/HyperMango.app
-```
+The app is signed with a Developer ID and notarized by Apple, so it opens
+normally on first launch.
 
 ## Building from source
 
