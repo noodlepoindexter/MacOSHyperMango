@@ -5,10 +5,12 @@
 //! data URLs, exactly like the original web app's in-memory model. This module
 //! is the only place that knows the difference between them.
 //!
-//!   .hmango  — a directory package. `stack.json` plus real PNG/audio files.
-//!              Efficient, diffable, and inspectable in Finder.
-//!   .hweb    — the web version's single JSON file with base64 data URLs
-//!              inlined. Supported for import/export interop only.
+//!   .hmango  — a single JSON file with base64 data URLs inlined. Earlier
+//!              builds wrote `.hmango` as a directory package (`stack.json`
+//!              plus PNG/audio files); those still open, and are replaced by
+//!              a single file the next time they are saved.
+//!   .hweb    — the web version's single JSON file. Same shape as `.hmango`,
+//!              supported for import/export interop only.
 
 use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
@@ -16,8 +18,8 @@ use serde_json::{json, Map, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// Schema version written into `stack.json`. Bump only on breaking changes.
-const PACKAGE_VERSION: u32 = 1;
+/// Schema version written into `.hmango` files. Bump only on breaking changes.
+const FORMAT_VERSION: u32 = 2;
 
 /// The payload exchanged with the frontend. Cards carry `imageData` as a PNG
 /// data URL regardless of which format backs them on disk.
@@ -59,33 +61,6 @@ type Result<T> = std::result::Result<T, Error>;
 // Data URL helpers
 // ---------------------------------------------------------------------------
 
-/// Split a `data:<mime>;base64,<payload>` URL into its decoded bytes and the
-/// file extension implied by its MIME type. Returns None for anything that
-/// isn't a base64 data URL, so callers can pass through plain paths untouched.
-fn decode_data_url(url: &str) -> Option<(Vec<u8>, &'static str)> {
-    let rest = url.strip_prefix("data:")?;
-    let comma = rest.find(',')?;
-    let (meta, payload) = rest.split_at(comma);
-    if !meta.contains("base64") {
-        return None;
-    }
-    let bytes = STANDARD.decode(payload[1..].as_bytes()).ok()?;
-    let ext = if meta.starts_with("image/png") {
-        "png"
-    } else if meta.starts_with("image/jpeg") {
-        "jpg"
-    } else if meta.starts_with("audio/mpeg") || meta.starts_with("audio/mp3") {
-        "mp3"
-    } else if meta.starts_with("audio/ogg") {
-        "ogg"
-    } else if meta.starts_with("audio/wav") || meta.starts_with("audio/x-wav") {
-        "wav"
-    } else {
-        "bin"
-    };
-    Some((bytes, ext))
-}
-
 fn encode_data_url(bytes: &[u8], mime: &str) -> String {
     format!("data:{};base64,{}", mime, STANDARD.encode(bytes))
 }
@@ -106,21 +81,18 @@ fn mime_for_ext(ext: &str) -> &'static str {
 // ---------------------------------------------------------------------------
 
 pub fn load(path: &Path) -> Result<Document> {
-    if is_package(path) {
+    if path.is_dir() {
         load_package(path)
     } else {
-        load_hweb(path)
+        load_file(path)
     }
 }
 
-fn is_package(path: &Path) -> bool {
-    path.is_dir() || path.extension().map(|e| e == "hmango").unwrap_or(false)
-}
-
-/// Read a `.hweb` file. This is the web app's exact schema, so the only work
-/// is validating the shape and normalising fields the web version treats as
-/// optional (older stacks predate `textObjects` and per-button `nameId`).
-fn load_hweb(path: &Path) -> Result<Document> {
+/// Read a single-file `.hmango` or `.hweb`. Both use the web app's schema, so
+/// the only work is validating the shape and normalising fields the web
+/// version treats as optional (older stacks predate `textObjects` and
+/// per-button `nameId`).
+fn load_file(path: &Path) -> Result<Document> {
     let text = fs::read_to_string(path)?;
     let v: Value =
         serde_json::from_str(&text).map_err(|e| Error::Parse(format!("invalid JSON: {}", e)))?;
@@ -178,7 +150,7 @@ fn normalize_card(card: &Value) -> Value {
     Value::Object(c)
 }
 
-/// Read a `.hmango` package, re-inlining every referenced file as a data URL
+/// Read a legacy directory-package `.hmango`, re-inlining every referenced file as a data URL
 /// so the frontend receives the same shape it would from a `.hweb`.
 fn load_package(dir: &Path) -> Result<Document> {
     let manifest = fs::read_to_string(dir.join("stack.json"))
@@ -256,106 +228,23 @@ fn read_as_data_url(dir: &Path, rel: &str) -> Result<Value> {
 // Writing
 // ---------------------------------------------------------------------------
 
-/// Write a `.hmango` package. The package is built in a sibling temp directory
-/// and swapped into place, so an interrupted save can never leave a partially
-/// written document where the original used to be.
-pub fn save_package(dir: &Path, doc: &Document) -> Result<()> {
-    let staging = staging_path(dir);
-    if staging.exists() {
-        fs::remove_dir_all(&staging)?;
-    }
-    fs::create_dir_all(staging.join("cards"))?;
-    fs::create_dir_all(staging.join("surfaces"))?;
-    fs::create_dir_all(staging.join("sounds"))?;
+/// Write a native `.hmango` file: a single JSON document with every image and
+/// sound inlined as a data URL.
+pub fn save_native(path: &Path, doc: &Document) -> Result<()> {
+    write_atomic(path, &native_bytes(doc)?)
+}
 
-    let mut cards = Vec::new();
-    for (i, card) in doc.stack.iter().enumerate() {
-        let mut c = card.as_object().cloned().unwrap_or_default();
-
-        // Paint layer -> cards/card-N.png
-        if let Some(url) = c.remove("imageData").and_then(|d| d.as_str().map(String::from)) {
-            if let Some((bytes, ext)) = decode_data_url(&url) {
-                let rel = format!("cards/card-{}.{}", i + 1, ext);
-                fs::write(staging.join(&rel), bytes)?;
-                c.insert("paint".into(), json!(rel));
-            }
-        }
-
-        // Canvas-button faces -> surfaces/card-N-<buttonId>.png
-        if let Some(buttons) = c.get_mut("buttons").and_then(|b| b.as_array_mut()) {
-            for btn in buttons.iter_mut() {
-                let bo = match btn.as_object_mut() {
-                    Some(o) => o,
-                    None => continue,
-                };
-                let id = bo
-                    .get("id")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("btn")
-                    .to_string();
-                if let Some(url) = bo.remove("canvasData").and_then(|d| d.as_str().map(String::from))
-                {
-                    if let Some((bytes, ext)) = decode_data_url(&url) {
-                        let rel = format!("surfaces/card-{}-{}.{}", i + 1, sanitize(&id), ext);
-                        fs::write(staging.join(&rel), bytes)?;
-                        bo.insert("surface".into(), json!(rel));
-                    }
-                }
-            }
-        }
-        cards.push(Value::Object(c));
-    }
-
-    // Custom sounds -> sounds/<name>.<ext>
-    let mut sounds = Map::new();
-    if let Some(map) = doc.custom_sounds.as_object() {
-        for (name, entry) in map {
-            let url = entry.get("dataUrl").and_then(|d| d.as_str()).unwrap_or("");
-            if let Some((bytes, ext)) = decode_data_url(url) {
-                let rel = format!("sounds/{}.{}", sanitize(name), ext);
-                fs::write(staging.join(&rel), bytes)?;
-                sounds.insert(name.clone(), json!({ "file": rel }));
-            }
-        }
-    }
-
-    let manifest = json!({
-        "format": "hypermango-package",
-        "version": PACKAGE_VERSION,
+/// The bytes of a native `.hmango` file, for writing locally or uploading.
+pub fn native_bytes(doc: &Document) -> Result<Vec<u8>> {
+    let payload = json!({
+        "format": "hypermango",
+        "version": FORMAT_VERSION,
         "projectName": doc.project_name,
         "variables": doc.variables,
-        "customSounds": Value::Object(sounds),
-        "stack": cards,
+        "customSounds": doc.custom_sounds,
+        "stack": doc.stack,
     });
-    fs::write(
-        staging.join("stack.json"),
-        serde_json::to_vec_pretty(&manifest).map_err(|e| Error::Parse(e.to_string()))?,
-    )?;
-
-    // Swap: move any existing document aside, promote staging, then delete the
-    // old copy. The window where neither exists is a single rename.
-    let backup = backup_path(dir);
-    if dir.exists() {
-        if backup.exists() {
-            fs::remove_dir_all(&backup)?;
-        }
-        fs::rename(dir, &backup)?;
-    }
-    match fs::rename(&staging, dir) {
-        Ok(()) => {
-            if backup.exists() {
-                let _ = fs::remove_dir_all(&backup);
-            }
-            Ok(())
-        }
-        Err(e) => {
-            // Promotion failed — put the original back before surfacing the error.
-            if backup.exists() {
-                let _ = fs::rename(&backup, dir);
-            }
-            Err(Error::Io(e.to_string()))
-        }
-    }
+    serde_json::to_vec(&payload).map_err(|e| Error::Parse(e.to_string()))
 }
 
 /// Write a `.hweb` file: the web version's schema, with everything inlined.
@@ -377,18 +266,53 @@ pub fn write_text(path: &Path, contents: &str) -> Result<()> {
     write_atomic(path, contents.as_bytes())
 }
 
+/// Write via a sibling temp file and rename, so an interrupted save never
+/// leaves a half-written document. If a legacy directory package sits at
+/// `path`, it is moved aside first and only deleted once the new file is in
+/// place.
 fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
     let tmp = path.with_extension(format!(
         "{}.tmp",
         path.extension().and_then(|e| e.to_str()).unwrap_or("out")
     ));
     fs::write(&tmp, bytes)?;
-    fs::rename(&tmp, path)?;
-    Ok(())
+
+    if !path.is_dir() {
+        return fs::rename(&tmp, path).map_err(Error::from);
+    }
+
+    let backup = backup_path(path);
+    if backup.exists() {
+        fs::remove_dir_all(&backup)?;
+    }
+    fs::rename(path, &backup)?;
+    match fs::rename(&tmp, path) {
+        Ok(()) => {
+            let _ = fs::remove_dir_all(&backup);
+            Ok(())
+        }
+        Err(e) => {
+            // Promotion failed — put the original back before surfacing the error.
+            let _ = fs::rename(&backup, path);
+            Err(Error::Io(e.to_string()))
+        }
+    }
 }
 
-fn staging_path(dir: &Path) -> PathBuf {
-    sibling(dir, ".hypermango-save")
+/// FNV-1a over the path's bytes. Stable across runs and Rust versions (unlike
+/// `DefaultHasher`), so a document keeps the same backup file forever.
+pub fn path_hash(path: &str) -> u32 {
+    path.bytes().fold(0x811c_9dc5u32, |h, b| (h ^ b as u32).wrapping_mul(0x0100_0193))
+}
+
+/// Replace characters that are awkward in filenames on macOS and Windows.
+pub fn safe_file_name(name: &str) -> String {
+    let cleaned: String = name
+        .chars()
+        .map(|c| if "/\\:*?\"<>|".contains(c) || c.is_control() { '_' } else { c })
+        .collect();
+    let trimmed = cleaned.trim().trim_start_matches('.');
+    if trimmed.is_empty() { "Untitled".into() } else { trimmed.into() }
 }
 
 fn backup_path(dir: &Path) -> PathBuf {
@@ -403,15 +327,32 @@ fn sibling(dir: &Path, suffix: &str) -> PathBuf {
     dir.with_file_name(format!("{}{}", name, suffix))
 }
 
-/// Keep generated filenames safe across macOS and Windows.
-fn sanitize(s: &str) -> String {
-    s.chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
-                c
-            } else {
-                '_'
-            }
-        })
-        .collect()
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn saving_over_a_legacy_package_leaves_a_single_file() {
+        let dir = std::env::temp_dir().join(format!("hm-test-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let path = dir.join("Quest.hmango");
+        fs::create_dir_all(&path).unwrap();
+        fs::write(
+            path.join("stack.json"),
+            r#"{"projectName":"Quest","stack":[{"name":"One","buttons":[]}]}"#,
+        )
+        .unwrap();
+
+        let doc = load(&path).unwrap();
+        assert_eq!(doc.stack.len(), 1);
+        save_native(&path, &doc).unwrap();
+
+        assert!(path.is_file());
+        assert!(!backup_path(&path).exists());
+        let reloaded = load(&path).unwrap();
+        assert_eq!(reloaded.project_name, "Quest");
+        assert_eq!(reloaded.stack[0]["name"], "One");
+        fs::remove_dir_all(&dir).unwrap();
+    }
 }

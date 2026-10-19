@@ -322,3 +322,34 @@ select {
   margin-bottom: var(--space-2);
 }
 .var-row .name { font-family: var(--font-mono); }
+
+/* --- Save button and save toast --------------------------------------- */
+
+#save-btn {
+  font-size: var(--text-lg);
+  font-weight: 600;
+  padding: 0 var(--space-4);
+}
+
+.toast {
+  position: fixed;
+  top: 64px;
+  left: 50%;
+  transform: translate(-50%, -6px);
+  max-width: calc(100vw - 32px);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--surface-overlay);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-lg);
+  font-size: var(--text-base);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s, transform 0.18s;
+  z-index: 1000;
+}
+.toast.visible { opacity: 1; transform: translate(-50%, 0); }

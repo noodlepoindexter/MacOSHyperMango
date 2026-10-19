@@ -21,7 +21,9 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .hide_others()
         .show_all()
         .separator()
-        .quit()
+        // Not the predefined quit item: that terminates immediately, and the
+        // editor needs a chance to offer saving unsaved changes first.
+        .item(&item(app, "app.quit", "Quit HyperMango", Some("CmdOrCtrl+Q"))?)
         .build()?;
 
     let mut recent_menu = SubmenuBuilder::new(app, "Open Recent");
@@ -44,6 +46,8 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         .separator()
         .item(&item(app, "file.save", "Save", Some("CmdOrCtrl+S"))?)
         .item(&item(app, "file.saveAs", "Save As…", Some("CmdOrCtrl+Shift+S"))?)
+        .item(&item(app, "file.saveDrive", "Save to Google Drive", None)?)
+        .item(&item(app, "file.driveSignOut", "Sign Out of Google Drive", None)?)
         .separator()
         .item(&item(app, "file.importHweb", "Import .hweb…", None)?)
         .item(&item(app, "file.exportHweb", "Export .hweb…", None)?)
@@ -140,8 +144,18 @@ pub fn refresh<R: Runtime>(app: &AppHandle<R>) {
 
 /// Forward a menu selection to whichever window is focused, falling back to
 /// the main window. Play mode runs in its own window and ignores editor events.
-/// Document-level items (Clear Menu, recent files) always go to the editor.
+/// Document-level items (Clear Menu, recent files, Quit) always go to the editor.
 pub fn dispatch<R: Runtime>(app: &AppHandle<R>, id: &str) {
+    if id == "app.quit" {
+        match app.get_webview_window("main") {
+            Some(main) => {
+                let _ = main.set_focus();
+                let _ = main.emit("menu", id);
+            }
+            None => app.exit(0),
+        }
+        return;
+    }
     if id == "file.clearRecent" {
         crate::recent::clear(app);
         refresh(app);

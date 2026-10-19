@@ -174,6 +174,8 @@ class Editor {
 
     document.getElementById('undo-btn').addEventListener('click', () => this.undo());
     document.getElementById('redo-btn').addEventListener('click', () => this.redo());
+    document.getElementById('save-btn').addEventListener('click', () => this.doc.save());
+    document.getElementById('save-drive-btn').addEventListener('click', () => this.doc.saveToDrive());
     document.getElementById('add-card-btn').addEventListener('click', () => this.addCard());
     this.bindButtonDrag(document.getElementById('add-button-btn'));
     this.bindPlaySplit();
@@ -1296,10 +1298,13 @@ class Editor {
 
   bindMenu() {
     const handlers = {
+      'app.quit': () => this.doc.quit(),
       'file.new': () => this.doc.newStack(),
       'file.open': () => this.doc.openStack(),
       'file.save': () => this.doc.save(),
       'file.saveAs': () => this.doc.saveAs(),
+      'file.saveDrive': () => this.doc.saveToDrive(),
+      'file.driveSignOut': () => this.doc.driveSignOut(),
       'file.importHweb': () => this.doc.importHweb(),
       'file.exportHweb': () => this.doc.exportHweb(),
       'file.exportHtml': () =>
