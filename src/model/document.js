@@ -8,6 +8,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { open, save, message } from '@tauri-apps/plugin-dialog';
+import { dirname, documentDir, join } from '@tauri-apps/api/path';
 import { fromDocument, toDocument, createStack } from './stack.js';
 
 const BACKUP_INTERVAL_MS = 60_000;
@@ -148,8 +149,12 @@ export class DocumentController {
   }
 
   async saveAs() {
+    // The save panel only opens where we point it when the default path is
+    // absolute. A bare file name leaves it on whatever folder it last used
+    // (often Downloads), so start in this file's folder or in Documents.
+    const folder = this.path ? await dirname(this.path) : await documentDir();
     let path = await save({
-      defaultPath: `${safeName(this.displayName)}.hmango`,
+      defaultPath: await join(folder, `${safeName(this.displayName)}.hmango`),
       filters: [FILTERS.native],
     });
     if (!path) return false;

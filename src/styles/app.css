@@ -410,6 +410,9 @@ html, body {
 }
 .obj-button.is-canvas { padding: 0; background: #fff; }
 .obj-button-label {
+  position: relative;
+  top: 2px;
+  left: 2px;
   padding: 0 var(--space-2);
   overflow: hidden;
   text-overflow: ellipsis;

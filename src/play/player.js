@@ -167,16 +167,21 @@ export class Player {
     }
   }
 
-  /** Run a button's behaviour: a script if it has one, otherwise the simple
-      sound / effect / go-to properties. */
+  /** Run a button's behaviour. Its script runs first, then the button's own
+      effect / sound / go-to fire regardless of how the script went, so a
+      scripted button still behaves as configured in the UI. */
   async activate(button) {
-    if (button.effect) triggerEffect(this.root, button.effect);
-
     if (button.script?.trim()) {
       this.interp.cancelled = false;
-      await this.interp.run(button.script, button.nameId);
-      return;
+      try {
+        await this.interp.run(button.script, button.nameId);
+      } catch (e) {
+        this.reportError(e.message);
+      }
+      // Leaving play mode cancels the script; don't fire UI behaviour then.
+      if (this.interp.cancelled) return;
     }
+    if (button.effect) triggerEffect(this.root, button.effect);
     if (button.sound) this.audio.play(button.sound);
     if (button.goto > 0 && button.goto <= this.stack.cards.length) {
       await this.show(button.goto - 1);

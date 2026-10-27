@@ -163,6 +163,9 @@ class Editor {
     this.bindColorWell('stroke-well', 'stroke');
     this.bindColorWell('fill-well', 'fill');
     this.bindColorFlyout();
+    // Right-clicking the tool rail does nothing; without this the webview's
+    // default menu (which offers Reload) would appear.
+    document.getElementById('toolrail').addEventListener('contextmenu', (e) => e.preventDefault());
     this.swatchRail = new SwatchRail(document.getElementById('palette-rail'), (c, button) => {
       // Left click sets the line colour, unless the bucket is active — its
       // "paint" is the fill. Right click always sets the fill.
@@ -1346,8 +1349,12 @@ class Editor {
   }
 
   bindWindow() {
+    // The red dot takes the same path as Cmd+Q: hold the close, confirm unsaved
+    // changes, then exit the whole app (play window included). Letting the
+    // close through would destroy only this webview and leave the rest running.
     getCurrentWindow().onCloseRequested(async (event) => {
-      if (!(await this.doc.confirmDiscard())) event.preventDefault();
+      event.preventDefault();
+      await this.doc.quit();
     });
   }
 }
