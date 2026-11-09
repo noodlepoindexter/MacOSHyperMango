@@ -6,6 +6,9 @@ A HyperCard-style drawing and scripting studio for macOS.
 
 **[⬇ Download HyperMango for Mac (.dmg)](https://github.com/noodlepoindexter/MacOSHyperMango/releases/latest/download/HyperMango.dmg)**
 
+This link always downloads the Mac build from the
+[latest release](https://github.com/noodlepoindexter/MacOSHyperMango/releases/latest).
+
 Universal build — runs on Apple Silicon and Intel Macs (macOS 10.15 or later).
 
 ### Installing
